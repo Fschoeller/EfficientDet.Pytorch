@@ -1,0 +1,74 @@
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+0
+2
+0
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+3
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+Loaded pretrained weights for efficientnet-b4
+Run with DataParallel ....
+0 epoch: 	 start training....
+{'img': tensor([[[1.6667, 1.9034, 2.3263],
+         [1.8636, 2.1107, 2.2495],
+         [1.7790, 1.8711, 2.4515],
+         ...,
+         [0.5396, 0.3649, 0.8938],
+         [0.3989, 0.3327, 1.0512],
+         [0.1426, 0.2752, 1.0017]],
+
+        [[1.6469, 2.1206, 2.1269],
+         [1.6008, 1.9749, 2.0850],
+         [1.8523, 2.1599, 2.0156],
+         ...,
+         [0.0665, 0.1450, 0.7371],
+         [0.0247, 0.3132, 0.8139],
+         [0.1822, 0.3376, 0.8252]],
+
+        [[1.3327, 1.9898, 2.1634],
+         [1.6345, 2.0543, 2.1251],
+         [1.8354, 2.0614, 1.9776],
+         ...,
+         [0.1846, 0.5131, 0.8753],
+         [0.2803, 0.3487, 0.8765],
+         [0.1624, 0.6013, 0.8159]],
+
+        ...,
+
+        [[0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         ...,
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000]],
+
+        [[0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         ...,
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000]],
+
+        [[0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         ...,
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000],
+         [0.0000, 0.0000, 0.0000]]], dtype=torch.float64), 'annot': tensor([], size=(0, 5), dtype=torch.float64), 'scale': 0.35555555555555557}

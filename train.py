@@ -29,58 +29,90 @@ from torch.utils.data import DataLoader
 
 from models.efficientdet import EfficientDet
 from models.losses import FocalLoss
-from datasets import VOCDetection, CocoDataset, get_augumentation, detection_collate, Resizer, Normalizer, Augmenter, collater
+from datasets import VOCDetection, CocoDataset,CSVDataset,get_augumentation, detection_collate, Resizer, Normalizer, Augmenter, collater
+#from datasets.dataloader import CSVDataset, Normalizer, Resizer, collater
 from utils import EFFICIENTDET, get_state_dict
 from eval import evaluate, evaluate_coco
 
+#TEMP TEMP
+os.environ["CUDA_VISIBLE_DEVICES"] = '0'
+
 parser = argparse.ArgumentParser(description='PyTorch ImageNet Training')
-parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO'],
+parser.add_argument('--dataset', default='VOC', choices=['VOC', 'COCO', 'CSV'],
                     type=str, help='VOC or COCO')
 parser.add_argument(
     '--dataset_root',
     default='/root/data/VOCdevkit/',
     help='Dataset root directory path [/root/data/VOCdevkit/, /root/data/coco/]')
-parser.add_argument('--network', default='efficientdet-d0', type=str,
+
+parser.add_argument(
+    '--valset_root',
+    default='/root/data/VOCdevkit/',
+    help='Dataset root directory path [/root/data/VOCdevkit/, /root/data/coco/]')
+
+parser.add_argument('--network', default='efficientdet-d4', type=str,
                     help='efficientdet-[d0, d1, ..]')
+
+parser.add_argument('--classes', default='', type=str,
+                    help='classes for csv data')
 
 parser.add_argument('--resume', default=None, type=str,
                     help='Checkpoint state_dict file to resume training from')
+
 parser.add_argument('--num_epoch', default=500, type=int,
                     help='Num epoch for training')
+
 parser.add_argument('--batch_size', default=32, type=int,
                     help='Batch size for training')
-parser.add_argument('--num_class', default=20, type=int,
+
+parser.add_argument('--num_class', default=2, type=int,
                     help='Number of class used in model')
+
 parser.add_argument('--device', default=[0, 1], type=list,
                     help='Use CUDA to train model')
+
 parser.add_argument('--grad_accumulation_steps', default=1, type=int,
                     help='Number of gradient accumulation steps')
+
 parser.add_argument('--lr', '--learning-rate', default=1e-4, type=float,
                     help='initial learning rate')
+
 parser.add_argument('--momentum', default=0.9, type=float,
                     help='Momentum value for optim')
+
 parser.add_argument('--weight_decay', default=5e-4, type=float,
                     help='Weight decay for SGD')
+
 parser.add_argument('--gamma', default=0.1, type=float,
                     help='Gamma update for SGD')
+
 parser.add_argument('--save_folder', default='./saved/weights/', type=str,
                     help='Directory for saving checkpoint models')
-parser.add_argument('-j', '--workers', default=4, type=int, metavar='N',
+
+parser.add_argument('-j', '--workers', default=0, type=int, metavar='N',
                     help='number of data loading workers (default: 4)')
+
 parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                     help='manual epoch number (useful on restarts)')
-parser.add_argument('--world-size', default=1, type=int,
+
+parser.add_argument('--world-size', default=2, type=int,
                     help='number of nodes for distributed training')
+
 parser.add_argument('--rank', default=0, type=int,
                     help='node rank for distributed training')
+
 parser.add_argument('--dist-url', default='env://', type=str,
                     help='url used to set up distributed training')
+
 parser.add_argument('--dist-backend', default='nccl', type=str,
                     help='distributed backend')
-parser.add_argument('--seed', default=24, type=int,
+
+parser.add_argument('--seed', default=None, type=int,
                     help='seed for initializing training. ')
+
 parser.add_argument('--gpu', default=None, type=int,
                     help='GPU id to use.')
+
 parser.add_argument(
     '--multiprocessing-distributed',
     action='store_true',
@@ -94,6 +126,7 @@ iteration = 1
 
 def train(train_loader, model, scheduler, optimizer, epoch, args):
     global iteration
+
     print("{} epoch: \t start training....".format(epoch))
     start = time.time()
     total_loss = []
@@ -101,9 +134,9 @@ def train(train_loader, model, scheduler, optimizer, epoch, args):
     model.module.is_training = True
     model.module.freeze_bn()
     optimizer.zero_grad()
-    for idx, (images, annotations) in enumerate(train_loader):
-        images = images.cuda().float()
-        annotations = annotations.cuda()
+    for idx, sample in enumerate(train_loader):
+        images = sample['img'].cuda().float()
+        annotations = sample['annot'].cuda()
         classification_loss, regression_loss = model([images, annotations])
         classification_loss = classification_loss.mean()
         regression_loss = regression_loss.mean()
@@ -145,10 +178,8 @@ def test(dataset, model, epoch, args):
     model.eval()
     model.is_training = False
     with torch.no_grad():
-        if(args.dataset == 'VOC'):
-            evaluate(dataset, model)
-        else:
-            evaluate_coco(dataset, model)
+        evaluate(dataset, model)
+
 
 
 def main_worker(gpu, ngpus_per_node, args):
@@ -172,30 +203,12 @@ def main_worker(gpu, ngpus_per_node, args):
 
     # Training dataset
     train_dataset = []
-    if(args.dataset == 'VOC'):
-        train_dataset = VOCDetection(root=args.dataset_root, transform=transforms.Compose(
-            [Normalizer(), Augmenter(), Resizer()]))
-        valid_dataset = VOCDetection(root=args.dataset_root, image_sets=[(
-            '2007', 'test')], transform=transforms.Compose([Normalizer(), Resizer()]))
-        args.num_class = train_dataset.num_classes()
-    elif(args.dataset == 'COCO'):
-        train_dataset = CocoDataset(
-            root_dir=args.dataset_root,
-            set_name='train2017',
-            transform=transforms.Compose(
-                [
-                    Normalizer(),
-                    Augmenter(),
-                    Resizer()]))
-        valid_dataset = CocoDataset(
-            root_dir=args.dataset_root,
-            set_name='val2017',
-            transform=transforms.Compose(
-                [
-                    Normalizer(),
-                    Resizer()]))
-        args.num_class = train_dataset.num_classes()
 
+
+    train_dataset = CSVDataset(train_file=args.dataset_root, class_list=args.classes, transform=transforms.Compose([Normalizer(), Resizer()]))
+    valid_dataset = CSVDataset(train_file=args.valset_root, class_list=args.classes, transform=transforms.Compose([Normalizer(), Resizer()]))
+
+    
     train_loader = DataLoader(train_dataset,
                               batch_size=args.batch_size,
                               num_workers=args.workers,
@@ -234,11 +247,16 @@ def main_worker(gpu, ngpus_per_node, args):
     if(args.resume is not None):
         model.load_state_dict(checkpoint['state_dict'])
     del checkpoint
-    if args.distributed:
+   
+
+    if False:
         # For multiprocessing distributed, DistributedDataParallel constructor
         # should always set the single device scope, otherwise,
         # DistributedDataParallel will use all available devices.
-        if args.gpu is not None:
+        #if args.gpu is not None:
+        if False:
+            print('omg0')
+            exit()
             torch.cuda.set_device(args.gpu)
             model.cuda(args.gpu)
             # When using a single GPU per process and per
@@ -250,20 +268,27 @@ def main_worker(gpu, ngpus_per_node, args):
             model = torch.nn.parallel.DistributedDataParallel(
                 model, device_ids=[args.gpu], find_unused_parameters=True)
             print('Run with DistributedDataParallel with divice_ids....')
+            exit()
         else:
             model.cuda()
             # DistributedDataParallel will divide and allocate batch_size to all
             # available GPUs if device_ids are not set
             model = torch.nn.parallel.DistributedDataParallel(model)
             print('Run with DistributedDataParallel without device_ids....')
-    elif args.gpu is not None:
-        torch.cuda.set_device(args.gpu)
-        model = model.cuda(args.gpu)
+            exit()
+
+    
+    #elif args.gpu is not None:
+    #    torch.cuda.set_device(args.gpu)
+    #    model = model.cuda(args.gpu)
+    #    print('elif args.gpu')
+    #    exit()
+    
     else:
         model = model.cuda()
         print('Run with DataParallel ....')
         model = torch.nn.DataParallel(model).cuda()
-
+    
     # define loss function (criterion) , optimizer, scheduler
     optimizer = optim.AdamW(model.parameters(), lr=args.lr)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(
@@ -282,13 +307,7 @@ def main_worker(gpu, ngpus_per_node, args):
             'state_dict': get_state_dict(model)
         }
 
-        torch.save(
-            state,
-            os.path.join(
-                args.save_folder,
-                args.dataset,
-                args.network,
-                "checkpoint_{}.pth".format(epoch)))
+        torch.save(state,os.path.join(args.save_folder,args.dataset,args.network,"checkpoint_{}.pth".format(epoch)))
 
 
 def main():
@@ -310,7 +329,7 @@ def main():
                       'disable data parallelism.')
     os.environ['MASTER_ADDR'] = 'localhost'
     os.environ['MASTER_PORT'] = '12355'
-    os.environ['WORLD_SIZE'] = '2'
+    os.environ['WORLD_SIZE'] = '1'
     if args.dist_url == "env://" and args.world_size == -1:
         args.world_size = int(os.environ["WORLD_SIZE"])
 
@@ -331,3 +350,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
